@@ -12,7 +12,7 @@ pub fn delay(ticks: i32) void {
     }
 }
 
-const delay_time = 1000000;
+const delay_time = 10000000;
 
 pub fn main() void {
     // Enable AHB clock
