@@ -1,5 +1,5 @@
 const std = @import("std");
-const microzig = @import("microzig/src/main.zig");
+const microzig = @import("lib/microzig/src/main.zig");
 
 pub fn build(b: *std.build.Builder) !void {
     const project_name: []const u8 = "NodeMCU-BU01";
@@ -7,11 +7,18 @@ pub fn build(b: *std.build.Builder) !void {
     const nodeType = enum { tag, anchor };
 
     for ([_]nodeType{ .tag, .anchor }) |node| {
-        var allocator = std.heap.page_allocator;
+        const allocator = std.heap.page_allocator;
+
+        // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+        // const allocator = gpa.allocator();
+        // defer _ = gpa.deinit();
+
         const elf = try std.fmt.allocPrint(allocator, "{s}_{s}.elf", .{ project_name, @tagName(node) });
         defer allocator.free(elf);
         const bin = try std.fmt.allocPrint(allocator, "{s}_{s}.bin", .{ project_name, @tagName(node) });
         // defer allocator.free(bin); // Crashes program ???
+
+        std.debug.print("{s}\n{s}\n", .{ elf, bin });
 
         const build_options = b.addOptions();
         build_options.addOption(nodeType, "nodeType", node);
@@ -32,29 +39,26 @@ pub fn build(b: *std.build.Builder) !void {
         b.getInstallStep().dependOn(&exe_bin.step);
     }
 
-    // Read unique id
-    const read_unique_id_cmd = b.addSystemCommand(&[_][]const u8{
-        "st-flash",
-        "read",
-        "id", // File to save unique id to
-        "0x1FFFF7E8", // Base address of unique id
-        "0xC", // Length of unique id
-    });
-
-    const upload_cmd = b.addSystemCommand(&[_][]const u8{ "st-flash", "--connect-under-reset", "write", b.getInstallPath(.bin, try getFile()), "0x08000000" });
-    upload_cmd.step.dependOn(b.getInstallStep());
-
     const upload_step = b.step("upload", "Upload binary to microcontroller");
-    upload_step.dependOn(&read_unique_id_cmd.step);
-    upload_step.dependOn(&upload_cmd.step);
+    upload_step.makeFn = upload;
 }
 
-fn getFile() ![]const u8 {
-    var file = try std.fs.cwd().openFile("id", .{});
-    defer file.close();
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
-    var c: u8 = try in_stream.readByte();
-    std.debug.print("First value: {}\n", .{c});
-    return if (c == 72) "NodeMCU-BU01_anchor.bin" else "NodeMCU-BU01_tag.bin";
+fn upload(self: *std.build.Step) !void {
+    const tag = [_]u8{ 0x54, 0xFF, 0x6B, 0x06, 0x48, 0x49, 0x71, 0x50, 0x35, 0x54, 0x02, 0x67 };
+    // const anchor = [_]u8{0x48, 0xFF, 0x6B, 0x06, 0x86, 0x66, 0x50, 0x56, 0x32, 0x59, 0x09, 0x67};
+    _ = self;
+    const unique_id_file_name = "unique_id";
+    const allocator = std.heap.page_allocator;
+    // Get chip unique id
+    _ = try std.ChildProcess.exec(.{ .allocator = allocator, .argv = &[_][]const u8{ "st-flash", "read", unique_id_file_name, "0x1FFFF7E8", "0xC" } });
+    const unique_id_file = try std.fs.cwd().openFile(unique_id_file_name, .{ .mode = .read_only });
+    var unique_id: [12]u8 = undefined;
+    _ = try unique_id_file.read(&unique_id);
+    // Get binary to upload
+    const binary_file = for (unique_id) |byte, i| {
+        if (!(byte == tag[i])) break "zig-out/bin/NodeMCU-BU01_anchor.bin";
+    } else "zig-out/bin/NodeMCU-BU01_tag.bin";
+    // Upload
+    std.debug.print("Uploading: {s}\n", .{binary_file});
+    _ = try std.ChildProcess.exec(.{ .allocator = allocator, .argv = &[_][]const u8{ "st-flash", "--connect-under-reset", "write", binary_file, "0x08000000" } });
 }
