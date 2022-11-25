@@ -1,0 +1,20 @@
+{
+    "actionButtons": {
+        "reloadButton": null,
+        "loadNpmCommands": false,
+        "commands": [
+            {
+                "name": "Build",
+                "singleInstance": true,
+                "color": "#ffffff",
+                "command": "zig build",
+            },
+            {
+                "name": "Upload",
+                "singleInstance": true,
+                "color": "#ffffff",
+                "command": "zig build upload",
+            },
+        ]
+    }
+}

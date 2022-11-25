@@ -5,36 +5,30 @@ const regs = micro.chip.registers;
 
 const build_options = @import("build_options");
 
-pub fn delay(ticks: i32) void {
-    var i = @divExact(ticks, 5);
-    while (i > 0) : (i -= 1) {
-        asm volatile ("nop");
-    }
-}
+const led_pin = micro.Pin(switch (build_options.deviceType) {
+    .tag => "PA1",
+    .anchor => "PA2"
+});
 
-const delay_time = 10000000;
+const dw = @cImport({
+    @cInclude("deca_device_api.h");
+});
+
+var version = dw.dwt_apiversion();
+
+const delay_time = 1000000;
 
 pub fn main() void {
-    // Enable AHB clock
-    regs.RCC.APB2ENR.modify(.{ .IOPAEN = 1 });
-
-    // GPIO port mode
-
-    regs.GPIOA.CRL.modify(switch (build_options.nodeType) {
-        .tag => .{ .MODE1 = 0b01, .CNF1 = 0b00 },
-        .anchor => .{ .MODE2 = 0b01, .CNF2 = 0b00 },
+    const led = micro.Gpio(led_pin, .{
+        .mode = .output,
+        .initial_state = .low,
     });
+    led.init();
 
     while (true) {
-        delay(delay_time);
-        regs.GPIOA.BSRR.modify(switch (build_options.nodeType) {
-            .tag => .{ .BS1 = 1 },
-            .anchor => .{ .BS2 = 1 },
-        });
-        delay(delay_time);
-        regs.GPIOA.BSRR.modify(switch (build_options.nodeType) {
-            .tag => .{ .BR1 = 1 },
-            .anchor => .{ .BR2 = 1 },
-        });
+        micro.debug.busySleep(delay_time);
+        led.write(.low);
+        micro.debug.busySleep(delay_time);
+        led.write(.high);
     }
 }
