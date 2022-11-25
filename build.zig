@@ -43,10 +43,10 @@ fn upload(self: *std.build.Step) !void {
     var unique_id: [12]u8 = undefined;
     _ = try unique_id_file.read(&unique_id);
     // Get binary to upload
-    const bin_path = "zig-out/bin/" ++  project_name;
+    const path = "zig-out/bin/" ++  project_name;
     const binary_file = for (unique_id) |byte, i| {
         if (!(byte == tag[i])) break path ++ "_anchor.bin";
-    } else path  ++ "_tag.bin";
+    } else path ++ "_tag.bin";
     // Upload
     std.debug.print("Uploading {s}\n", .{binary_file});
     _ = try std.ChildProcess.exec(.{ .allocator = allocator, .argv = &[_][]const u8{ "st-flash", "--connect-under-reset", "write", binary_file, "0x08000000" } });
