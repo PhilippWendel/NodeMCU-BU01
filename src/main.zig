@@ -7,7 +7,7 @@ const build_options = @import("build_options");
 
 const led_pin = switch (build_options.deviceType) {
     .tag => micro.Pin("PA1"),
-    .anchor => micro.Pin("PA2")
+    .anchor => micro.Pin("PA2"),
 };
 
 //const dw = @cImport({
@@ -19,7 +19,7 @@ const led_pin = switch (build_options.deviceType) {
 const delay_time = 1000000;
 
 pub fn main() void {
-    const button = micro.Gpio(micro.Pin("PA0"), .{.mode = .input});
+    const button = micro.Gpio(micro.Pin("PA0"), .{ .mode = .input });
     button.init();
     const led = micro.Gpio(led_pin, .{
         .mode = .output,
@@ -28,7 +28,7 @@ pub fn main() void {
     led.init();
 
     while (true) {
-        if(button.read() == .high) micro.debug.busySleep(delay_time);
+        if (button.read() == .high) micro.debug.busySleep(delay_time);
         led.toggle();
     }
 }

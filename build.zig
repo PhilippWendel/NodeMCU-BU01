@@ -23,7 +23,6 @@ pub fn build(b: *std.build.Builder) !void {
         //exe.addIncludePath(b.pathFromRoot("/lib/decadriver/"));
         exe.setBuildMode(.ReleaseSmall);
         _ = exe.installRaw(bin, .{});
-
     }
 
     const upload_step = b.step("upload", "Upload binary to microcontroller");
@@ -43,7 +42,7 @@ fn upload(self: *std.build.Step) !void {
     var unique_id: [12]u8 = undefined;
     _ = try unique_id_file.read(&unique_id);
     // Get binary to upload
-    const path = "zig-out/bin/" ++  project_name;
+    const path = "zig-out/bin/" ++ project_name;
     const binary_file = for (unique_id) |byte, i| {
         if (!(byte == tag[i])) break path ++ "_anchor.bin";
     } else path ++ "_tag.bin";
