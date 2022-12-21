@@ -6,7 +6,9 @@ const project_name: []const u8 = "NodeMCU-BU01";
 pub fn build(b: *std.build.Builder) !void {
     const deviceType = enum { tag, anchor };
 
-    for ([_]deviceType{ .tag, .anchor }) |device| {
+    const devices = comptime @typeInfo(deviceType).Enum.fields;
+
+    for (devices) |device| {
         const bin = b.fmt("{s}_{s}.bin", .{ project_name, @tagName(device) });
         const build_options = b.addOptions();
         build_options.addOption(deviceType, "deviceType", device);
